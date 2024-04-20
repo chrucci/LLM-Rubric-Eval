@@ -8,7 +8,7 @@ class AvailableLLMs(Enum):
     # Mistrel = 4
     # Mixtrel = 5
     # Llama2 = 6
-    # Llama3 = 7
+    Llama3 = 7
     # Claude2 = 8
-    # Claude3_Opus = 9
-    # Claude3_Sonnet = 10
+    Claude3_Opus = 9
+    Claude3_Sonnet = 10

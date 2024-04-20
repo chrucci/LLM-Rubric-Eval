@@ -1,4 +1,6 @@
+from llama_index.llms.ollama import Ollama
 from llama_index.llms.openai import OpenAI
+from llama_index.llms.anthropic import Anthropic
 from .available_llms import AvailableLLMs
 
 
@@ -14,15 +16,17 @@ def get_llm_instance(llm: AvailableLLMs):
             return OpenAI(model="gpt-4-turbo")
         case AvailableLLMs.GPT35_Turbo:
             return OpenAI(model="gpt-3.5-turbo")
-        # case "llama2" | "llama3" | "mistrel" | "mixtrel":
-        #     return Ollama(model=llm_name, request_timeout=300.0)
+        case AvailableLLMs.Llama3:
+            return Ollama(model="llama3", request_timeout=300.0)
         # case "claude2":
         #     return Anthropic(model="claude-2.1")
-        # case "claude3":
-        #     return Anthropic(model="claude-3-opus-20240229")
+        case AvailableLLMs.Claude3_Opus:
+            return Anthropic(model="claude-3-opus-20240229")
+        case AvailableLLMs.Claude3_Sonnet:
+            return Anthropic(model="claude-3-sonnet-20240229")
         case _:
             raise ValueError(f"Invalid llm name: {llm.name}")
 
 
 def get_valid_llm_list():
-    return ["openai", "llama2", "llama3", "mistrel", "mixtrel", "claude2", "claude3"]
+    return [llm.name for llm in AvailableLLMs]
