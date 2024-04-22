@@ -2,6 +2,9 @@ import streamlit as st
 import litellm
 from dotenv import load_dotenv, find_dotenv
 from src.llm_factory import get_valid_llm_list
+from langfuse import Langfuse
+
+langfuse = Langfuse()
 # , get_llm_instance
 
 
@@ -13,11 +16,10 @@ def set_langfuse_callbacks():
     litellm.failure_callback = ["langfuse"]  # logs errors to langfuse
 
 
-def fetch(input_text, selected_model):
-    # openai call
+def call_model(model_name, messages):
     response = litellm.completion(
-        model=selected_model,
-        messages=[{"role": "user", "content": input_text}],
+        model=model_name,
+        messages=messages,
         # metadata={
         #     "generation_name": "litellm-ishaan-gen",  # set langfuse generation name
         #     # custom metadata fields
@@ -25,6 +27,17 @@ def fetch(input_text, selected_model):
         # },
     )
     return response["choices"][0]["message"]["content"]
+
+
+def fetch_with_prompt(input_text, selected_model, selected_prompt):
+    prompt = langfuse.get_prompt(selected_prompt)
+    messages = prompt.compile(input=input_text)
+    return call_model(selected_model, messages)
+
+
+def fetch(input_text, selected_model):
+    messages = ([{"role": "user", "content": input_text}],)
+    return call_model(selected_model, messages)
 
 
 set_langfuse_callbacks()
@@ -49,10 +62,36 @@ selected_model = st.selectbox(
     ],
 )
 
+prompt_options = {
+    "Default": "Interact with the LLM without a specfic system prompt.",
+    "Analyze Claims": "Parses the body of an article looks for logical claims made.  It then analyzes the validity of those claims.",
+}
+
+
+prompt_summary = st.container()
+
+
+def prompt_selected(selected_prompt):
+    st.write(prompt_options[selected_prompt])
+
+
+selected_prompt = st.selectbox(
+    "Prompts",
+    options=prompt_options.keys(),
+)
+describe_clicked = st.button("Describe Prompt")
+if describe_clicked:
+    prompt_selected(selected_prompt)
+
 input_text = st.text_area("What do you want to say")
 
 final_results = st.container(border=True)
 submitted = st.button("Run")
 if submitted:
     response = fetch(input_text, selected_model)
+    final_results.write(response)
+
+prompt_submitted = st.button("Prompt")
+if prompt_submitted:
+    response = fetch_with_prompt(input_text, selected_model, selected_prompt)
     final_results.write(response)
