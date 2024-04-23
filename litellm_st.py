@@ -3,8 +3,8 @@ import litellm
 from dotenv import load_dotenv, find_dotenv
 from src.llm_factory import get_valid_llm_list
 from langfuse import Langfuse
+from langfuse.decorators import langfuse_context, observe
 
-langfuse = Langfuse()
 # , get_llm_instance
 
 
@@ -29,9 +29,14 @@ def call_model(model_name, messages):
     return response["choices"][0]["message"]["content"]
 
 
+@observe(as_type="generation")
 def fetch_with_prompt(input_text, selected_model, selected_prompt):
     prompt = langfuse.get_prompt(selected_prompt)
     messages = prompt.compile(input=input_text)
+
+    langfuse_context.update_current_observation(
+        prompt=prompt,
+    )
     return call_model(selected_model, messages)
 
 
@@ -41,10 +46,11 @@ def fetch(input_text, selected_model):
 
 
 set_langfuse_callbacks()
+langfuse = Langfuse()
 
 llm_list = get_valid_llm_list()
 
-st.title("LLM Evaluation")
+st.title("LLM Evaluation (LiteLLM)")
 selected_model = st.selectbox(
     "Model",
     [
