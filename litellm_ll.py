@@ -35,47 +35,56 @@ def get_content(response):
 
 
 def get_usage(response):
-    return response["usage"]
+    usage = response["usage"]
+    return {
+        "completion_tokens": usage.completion_tokens,
+        "prompt_tokens": usage.prompt_tokens,
+        "total_tokens": usage.total_tokens,
+    }
+
+
+def get_model(response):
+    return response["model"]
 
 
 def fetch_with_prompt(input_text, selected_model, selected_prompt):
     prompt = langfuse.get_prompt(selected_prompt)
-    st.write(prompt)
+    # st.write(prompt)
     trace = langfuse.trace(
-        name="llm-feature",
-        session_id="new session id",
-        version="123",
+        name="llm-rubric",
+        session_id=f"{selected_model}---1",
+        version="1.0",
         input=f"{{'input_test': {input_text}}}",
-        metadata={"baz": "bat"},
-        tags=["tag1", "tag2"],
-        release="my fav release",
+        # metadata={"baz": "bat"},
+        # tags=["tag1", "tag2"],
+        # release="my fav release",
     )
-    span = trace.span(
-        name="embedding-search",
-        metadata={"database": "pinecone"},
-        input={"query": "This document entails the OKR goals for ACME"},
-    )
-    span.generation(name="query-creation")
-    span.span(name="vector-db-search")
-    span.event(name="db-summary")
+    # span = trace.span(
+    #     name="embedding-search",
+    #     metadata={"database": "pinecone"},
+    #     input={"query": "This document entails the OKR goals for ACME"},
+    # )
+    # span.generation(name="query-creation")
+    # span.span(name="vector-db-search")
+    # span.event(name="db-summary")
     messages = prompt.compile(input=input_text)
-    gen = trace.generation(
-        name=selected_prompt,
-        model=selected_model,
-        input=messages,
-    )
+    gen = trace.generation(name=selected_prompt, input=messages, version=prompt.version)
 
     # langfuse_context.update_current_observation(
     #     prompt=prompt,
     # )
     response = call_model(selected_model, messages)
+    model = get_model(response)
+    usage = get_usage(response)
+    st.write(usage)
+    # usage = {"completion_tokens": 497, "prompt_tokens": 1792, "total_tokens": 2289}
 
-    st.write(response)
+    # st.write(usage)
 
     content = get_content(response)
     trace.update(output=content, input=messages)
-    span.end(output=content)
-    gen.end(output=content)
+    # span.end(output=content)
+    gen.end(output=content, model=model, usage=usage)
     return content
 
 
