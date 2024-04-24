@@ -27,18 +27,56 @@ def call_model(model_name, messages):
         #     "project": "litellm-proxy",
         # },
     )
+    return response
+
+
+def get_content(response):
     return response["choices"][0]["message"]["content"]
 
 
-@observe(as_type="generation")
+def get_usage(response):
+    return response["usage"]
+
+
 def fetch_with_prompt(input_text, selected_model, selected_prompt):
     prompt = langfuse.get_prompt(selected_prompt)
-    messages = prompt.compile(input=input_text)
-
-    langfuse_context.update_current_observation(
-        prompt=prompt,
+    st.write(prompt)
+    trace = langfuse.trace(
+        name="llm-feature",
+        session_id="new session id",
+        version="123",
+        input=f"{{'input_test': {input_text}}}",
+        metadata={"baz": "bat"},
+        tags=["tag1", "tag2"],
+        release="my fav release",
     )
-    return call_model(selected_model, messages)
+    span = trace.span(
+        name="embedding-search",
+        metadata={"database": "pinecone"},
+        input={"query": "This document entails the OKR goals for ACME"},
+    )
+    span.generation(name="query-creation")
+    span.span(name="vector-db-search")
+    span.event(name="db-summary")
+    messages = prompt.compile(input=input_text)
+    gen = trace.generation(
+        name=selected_prompt,
+        model=selected_model,
+        input=messages,
+    )
+
+    # langfuse_context.update_current_observation(
+    #     prompt=prompt,
+    # )
+    response = call_model(selected_model, messages)
+
+    st.write(response)
+
+    content = get_content(response)
+    trace.update(output=content, input=messages)
+    span.end(output=content)
+    gen.end(output=content)
+    return content
 
 
 set_langfuse_callbacks()
