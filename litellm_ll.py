@@ -17,10 +17,15 @@ def set_langfuse_callbacks():
     litellm.failure_callback = ["langfuse"]  # logs errors to langfuse
 
 
-def call_model(model_name, messages):
+def call_model(model_name, messages, tempurature):
     response = litellm.completion(
         model=model_name,
         messages=messages,
+        temperature=tempurature,
+        # max_tokens=256,
+        # top_p=1,
+        # frequency_penalty=0,
+        # presence_penalty=0,
         # metadata={
         #     "generation_name": "litellm-ishaan-gen",  # set langfuse generation name
         #     # custom metadata fields
@@ -47,7 +52,7 @@ def get_model(response):
     return response["model"]
 
 
-def fetch_with_prompt(input_text, selected_model, selected_prompt):
+def fetch_with_prompt(input_text, selected_model, selected_prompt, temperature):
     prompt = langfuse.get_prompt(selected_prompt)
     # st.write(prompt)
     trace = langfuse.trace(
@@ -73,7 +78,7 @@ def fetch_with_prompt(input_text, selected_model, selected_prompt):
     # langfuse_context.update_current_observation(
     #     prompt=prompt,
     # )
-    response = call_model(selected_model, messages)
+    response = call_model(selected_model, messages, temperature)
     model = get_model(response)
     usage = get_usage(response)
     st.write(usage)
@@ -84,7 +89,13 @@ def fetch_with_prompt(input_text, selected_model, selected_prompt):
     content = get_content(response)
     trace.update(output=content, input=messages)
     # span.end(output=content)
-    gen.end(output=content, model=model, usage=usage)
+    gen.end(
+        output=content,
+        model=model,
+        usage=usage,
+        model_parameters={"tempurature": temperature},
+        prompt=prompt,
+    )
     return content
 
 
@@ -133,10 +144,14 @@ if describe_clicked:
     prompt_selected(selected_prompt)
 
 input_text = st.text_area("What do you want to say")
+temperature = st.slider("Temperature", min_value=0.0, max_value=1.0, step=0.1)
+st.write("Selected value:", temperature)
 
 final_results = st.container(border=True)
 
 prompt_submitted = st.button("Prompt")
 if prompt_submitted:
-    response = fetch_with_prompt(input_text, selected_model, selected_prompt)
+    response = fetch_with_prompt(
+        input_text, selected_model, selected_prompt, temperature
+    )
     final_results.write(response)
