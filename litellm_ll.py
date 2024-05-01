@@ -52,6 +52,7 @@ def get_model(response):
     return response["model"]
 
 
+# TODO: Chris, can you move this to a module or class so this can be called by a DeepEval test?
 def fetch_with_prompt(input_text, selected_model, selected_prompt, temperature):
     prompt = langfuse.get_prompt(selected_prompt)
     # st.write(prompt)
